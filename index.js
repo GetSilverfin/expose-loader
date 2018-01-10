@@ -4,6 +4,7 @@
 */
 
 var path = require('path');
+const exposeLoaderPathRegex = new RegExp(`^(.*)${path.sep}expose-loader${path.sep}index.js`);
 
 function accesorString(value) {
 	var childProperties = value.split(".");
@@ -26,10 +27,18 @@ module.exports.pitch = function(remainingRequest) {
 	// Change the request from an /abolute/path.js to a relative ./path.js
 	// This prevents [chunkhash] values from changing when running webpack
 	// builds in different directories.
-	const newRequestPath = remainingRequest.replace(
-		this.resourcePath,
-		'.' + path.sep + path.relative(this.context, this.resourcePath)
-	);
+
+	let newRequestPath = remainingRequest
+		.replace(this.resourcePath, `.${path.sep}${path.relative(this.context, this.resourcePath)}`);
+	let exposeLoaderMatch = remainingRequest.match(exposeLoaderPathRegex);
+	if (exposeLoaderMatch) {
+		let exposeLoaderPath = exposeLoaderMatch[0];
+		newRequestPath = newRequestPath
+			.replace(
+				exposeLoaderPath,
+				`.${path.sep}${path.relative(this.context, exposeLoaderPath)}`
+			);
+	}
 	this.cacheable && this.cacheable();
 	if(!this.query) throw new Error("query parameter is missing");
     /*
